@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgriLink — Smart Agriculture Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>body{font-family:'Inter',sans-serif;}</style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+<nav class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+  <div class="flex items-center gap-2"><span class="text-2xl">🌱</span><span class="font-bold text-xl">AgriLink</span></div>
+  <div class="flex gap-2">
+    <button onclick="showTab('lands')" class="tab-btn px-3 py-2 rounded-lg text-sm bg-green-700 text-white" data-tab="lands">Lands</button>
+    <button onclick="showTab('workers')" class="tab-btn px-3 py-2 rounded-lg text-sm text-gray-400" data-tab="workers">Workers</button>
+    <button onclick="showTab('ai-eval')" class="tab-btn px-3 py-2 rounded-lg text-sm text-gray-400" data-tab="ai-eval">AI Evaluation</button>
+    <button onclick="showTab('dashboard')" class="tab-btn px-3 py-2 rounded-lg text-sm text-gray-400" data-tab="dashboard">Stats</button>
+  </div>
+</nav>
+
+<!-- LANDS -->
+<div id="tab-lands" class="p-6">
+  <div class="flex justify-between items-center mb-6">
+    <div><h1 class="text-2xl font-bold">Available Lands 🌾</h1><p class="text-gray-400 text-sm">Abandoned lands ready to be reactivated</p></div>
+    <button onclick="showModal('land-modal')" class="bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-medium">+ List Land</button>
+  </div>
+  <div id="lands-grid" class="grid grid-cols-2 gap-4"></div>
+</div>
+
+<!-- WORKERS -->
+<div id="tab-workers" class="p-6 hidden">
+  <div class="flex justify-between items-center mb-6">
+    <div><h1 class="text-2xl font-bold">Agricultural Workers 👨‍🌾</h1><p class="text-gray-400 text-sm">Find skilled workers for your land</p></div>
+    <button onclick="showModal('worker-modal')" class="bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-medium">+ Register as Worker</button>
+  </div>
+  <div id="workers-grid" class="grid grid-cols-3 gap-4"></div>
+</div>
+
+<!-- AI EVALUATION -->
+<div id="tab-ai-eval" class="p-6 hidden">
+  <h1 class="text-2xl font-bold mb-2">AI Land Evaluation 🤖</h1>
+  <p class="text-gray-400 mb-6">Get an instant AI assessment of any land's agricultural potential.</p>
+  <div class="grid grid-cols-2 gap-6">
+    <div class="space-y-4">
+      <input id="eval-location" type="text" placeholder="Location (e.g. Calabria, South Italy)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500"/>
+      <input id="eval-size" type="text" placeholder="Size (e.g. 5 hectares)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500"/>
+      <select id="eval-soil" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500">
+        <option value="">Soil type...</option>
+        <option>Clay</option><option>Sandy</option><option>Loam</option><option>Silty</option><option>Peaty</option><option>Unknown</option>
+      </select>
+      <input id="eval-water" type="text" placeholder="Water access (e.g. river nearby, no access)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-green-500"/>
+      <textarea id="eval-notes" rows="4" placeholder="Additional info (current state, history, nearby infrastructure...)" class="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-green-500"></textarea>
+      <button onclick="runEval()" class="w-full bg-green-700 hover:bg-green-600 py-3 rounded-xl font-bold">🌱 Run AI Evaluation</button>
+    </div>
+    <div id="eval-result" class="bg-gray-900 border border-gray-800 rounded-xl p-5 min-h-64"><p class="text-gray-500 text-sm">AI evaluation will appear here...</p></div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="tab-dashboard" class="p-6 hidden">
+  <h1 class="text-2xl font-bold mb-6">Platform Stats 📊</h1>
+  <div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><p class="text-gray-400 text-sm">Lands Listed</p><p class="text-3xl font-bold mt-1 text-green-400" id="stat-lands">—</p></div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><p class="text-gray-400 text-sm">Workers Registered</p><p class="text-3xl font-bold mt-1" id="stat-workers">—</p></div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><p class="text-gray-400 text-sm">Hectares Available</p><p class="text-3xl font-bold mt-1 text-yellow-400" id="stat-hectares">—</p></div>
+  </div>
+</div>
+
+<!-- LAND MODAL -->
+<div id="land-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md">
+    <h2 class="font-bold text-lg mb-4">List Your Land</h2>
+    <div class="space-y-3">
+      <input id="land-title" type="text" placeholder="Land name/description" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <input id="land-location" type="text" placeholder="Location (Region, Province)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <input id="land-size" type="number" placeholder="Size in hectares" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <select id="land-type" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"><option>Arable</option><option>Pasture</option><option>Vineyard</option><option>Orchard</option><option>Mixed</option></select>
+      <select id="land-model" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"><option>Rent</option><option>Partnership</option><option>Sale</option></select>
+      <input id="land-owner" type="text" placeholder="Owner name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button onclick="saveLand()" class="flex-1 bg-green-700 hover:bg-green-600 py-2 rounded-lg text-sm font-medium">List Land</button>
+      <button onclick="hideModal('land-modal')" class="flex-1 bg-gray-800 py-2 rounded-lg text-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- WORKER MODAL -->
+<div id="worker-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md">
+    <h2 class="font-bold text-lg mb-4">Register as Worker</h2>
+    <div class="space-y-3">
+      <input id="worker-name" type="text" placeholder="Full name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <input id="worker-location" type="text" placeholder="Location" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <input id="worker-skills" type="text" placeholder="Skills (e.g. harvesting, irrigation, machinery)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <input id="worker-experience" type="number" placeholder="Years of experience" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+      <input id="worker-rate" type="text" placeholder="Daily rate (€)" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"/>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button onclick="saveWorker()" class="flex-1 bg-green-700 hover:bg-green-600 py-2 rounded-lg text-sm font-medium">Register</button>
+      <button onclick="hideModal('worker-modal')" class="flex-1 bg-gray-800 py-2 rounded-lg text-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://nmulrsbqdeqokvrybapn.supabase.co';
+const SUPABASE_KEY='%%SUPABASE_ANON_KEY%%';
+const GROQ_KEY='%%GROQ_KEY%%';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+function showTab(tab){
+  document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+  document.querySelectorAll('.tab-btn').forEach(btn=>{btn.classList.remove('bg-green-700','text-white');btn.classList.add('text-gray-400');});
+  const a=document.querySelector(`[data-tab="${tab}"]`);a.classList.add('bg-green-700','text-white');a.classList.remove('text-gray-400');
+  if(tab==='lands')loadLands();
+  if(tab==='workers')loadWorkers();
+  if(tab==='dashboard')loadStats();
+}
+function showModal(id){document.getElementById(id).classList.remove('hidden');}
+function hideModal(id){document.getElementById(id).classList.add('hidden');}
+
+async function loadLands(){
+  const{data}=await sb.from('agri_lands').select('*').order('created_at',{ascending:false});
+  document.getElementById('lands-grid').innerHTML=(data||[]).map(l=>`
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <div class="flex justify-between mb-2"><h3 class="font-semibold">${l.title}</h3><span class="text-xs bg-green-900 text-green-400 px-2 py-1 rounded">${l.model||'Rent'}</span></div>
+      <p class="text-sm text-gray-400">📍 ${l.location}</p>
+      <p class="text-sm text-gray-400">📐 ${l.size} hectares · ${l.type}</p>
+      <p class="text-xs text-gray-500 mt-2">Owner: ${l.owner_name||'Anonymous'}</p>
+    </div>`).join('')||'<p class="text-gray-500 col-span-2">No lands listed yet.</p>';
+}
+
+async function loadWorkers(){
+  const{data}=await sb.from('agri_workers').select('*').order('created_at',{ascending:false});
+  document.getElementById('workers-grid').innerHTML=(data||[]).map(w=>`
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <div class="w-10 h-10 bg-green-800 rounded-full flex items-center justify-center text-lg mb-3">👨‍🌾</div>
+      <h3 class="font-semibold">${w.name}</h3>
+      <p class="text-sm text-gray-400">📍 ${w.location}</p>
+      <p class="text-xs text-gray-500 mt-1">${w.skills}</p>
+      <div class="flex justify-between mt-3">
+        <span class="text-xs text-gray-400">${w.experience}y exp</span>
+        <span class="text-sm font-bold text-green-400">€${w.rate}/day</span>
+      </div>
+    </div>`).join('')||'<p class="text-gray-500 col-span-3">No workers yet.</p>';
+}
+
+async function loadStats(){
+  const{data:lands}=await sb.from('agri_lands').select('*');
+  const{data:workers}=await sb.from('agri_workers').select('*');
+  document.getElementById('stat-lands').textContent=lands?.length||0;
+  document.getElementById('stat-workers').textContent=workers?.length||0;
+  const ha=(lands||[]).reduce((s,l)=>s+(parseFloat(l.size)||0),0);
+  document.getElementById('stat-hectares').textContent=ha.toFixed(1);
+}
+
+async function saveLand(){
+  await sb.from('agri_lands').insert([{title:document.getElementById('land-title').value,location:document.getElementById('land-location').value,size:parseFloat(document.getElementById('land-size').value),type:document.getElementById('land-type').value,model:document.getElementById('land-model').value,owner_name:document.getElementById('land-owner').value}]);
+  hideModal('land-modal');loadLands();
+}
+
+async function saveWorker(){
+  await sb.from('agri_workers').insert([{name:document.getElementById('worker-name').value,location:document.getElementById('worker-location').value,skills:document.getElementById('worker-skills').value,experience:parseInt(document.getElementById('worker-experience').value),rate:document.getElementById('worker-rate').value}]);
+  hideModal('worker-modal');loadWorkers();
+}
+
+async function runEval(){
+  const location=document.getElementById('eval-location').value;
+  const size=document.getElementById('eval-size').value;
+  const soil=document.getElementById('eval-soil').value;
+  const water=document.getElementById('eval-water').value;
+  const notes=document.getElementById('eval-notes').value;
+  const el=document.getElementById('eval-result');
+  el.innerHTML='<p class="text-gray-400 animate-pulse">🌱 Analyzing land...</p>';
+  const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Authorization':`Bearer ${GROQ_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:`You are an expert agricultural consultant. Evaluate this land:\nLocation: ${location}\nSize: ${size}\nSoil: ${soil}\nWater: ${water}\nNotes: ${notes}\n\nProvide:\n1. Agricultural Potential Score (0-100)\n2. Best crops to grow\n3. Estimated annual revenue potential\n4. Main challenges\n5. Recommended action plan\n\nBe practical and concise.`}],max_tokens:500})});
+  const data=await res.json();
+  el.innerHTML=`<pre class="whitespace-pre-wrap text-sm text-gray-200 font-sans">${data.choices[0].message.content}</pre>`;
+}
+
+loadLands();
+</script>
+</body>
+</html>
